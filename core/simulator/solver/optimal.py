@@ -3,15 +3,12 @@ import torch
 
 from .base import BaseSolver
 
-def gen_all_binary_vectors(length):
-    return ((torch.arange(2**length).unsqueeze(1) >> torch.arange(length-1, -1, -1)) & 1).float()
-
 class Solver(BaseSolver):
 
     def __init__(self, args):
         super().__init__(args)
         # generate all solution
-        self.x = gen_all_binary_vectors(args.n_item)
+        self.x = simulator.solver.util.gen_all_binary_vectors(args.n_item)
 
     def select_action(self, batch):
         weight = batch['weight']

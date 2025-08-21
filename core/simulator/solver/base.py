@@ -1,5 +1,6 @@
 import simulator
 import torch
+import tqdm
 
 from . import util
 
@@ -29,7 +30,7 @@ class BaseSolver:
         loader = self.dataloader_dict['test']
         info = {'step': 0, 'objective': 0.0, 'constraint': 0.0}
         # step loop
-        for batch in loader:
+        for batch in tqdm.tqdm(loader):
             # select action
             action = self.select_action(batch)
             # evaluation
