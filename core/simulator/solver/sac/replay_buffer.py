@@ -3,7 +3,7 @@ import numpy as np
 import random
 
 Transition = namedtuple('Transition',
-                        ('observation', 'proto_action', 'action', 'next_observation', 'reward'))
+                        ('observation', 'proto_action', 'reward'))
 
 class ReplayBuffer(object):
 

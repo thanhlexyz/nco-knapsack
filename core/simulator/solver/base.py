@@ -43,5 +43,16 @@ class BaseSolver:
         info['constraint'] /= info['step']
         return info
 
+    def train(self):
+        # extract args
+        self.load()
+        monitor, args = self.monitor, self.args
+        info = self.train_epoch()
+        monitor.step(info)
+        monitor.export_csv()
+
+    def train_epoch(self):
+        pass
+
     def load(self):
         pass
