@@ -7,9 +7,6 @@ def create_folders(args):
     for folder in ls:
         os.makedirs(folder, exist_ok=True)
 
-def set_default_device(args):
-    torch.set_default_device(args.device)
-
 def get_args():
     # create args parser
     parser = argparse.ArgumentParser()
@@ -22,12 +19,13 @@ def get_args():
     parser.add_argument('--dataset', type=str, default='knapsack')
     parser.add_argument('--n_item', type=int, default=10)
     parser.add_argument('--capacity', type=float, default=0.25) # fraction
+    parser.add_argument('--batch_size', type=int, default=128)
     # large discrete action space solver
     parser.add_argument('--mapper', type=str, default='knn')
     parser.add_argument('--knn_k', type=int, default=25)
     parser.add_argument('--n_proto_action', type=int, default=5)
     # solver
-    parser.add_argument('--solver', type=str, default='random')
+    parser.add_argument('--solver', type=str, default='greedy')
     # data directory
     parser.add_argument('--checkpoint_dir', type=str, default='../data/checkpoint')
     parser.add_argument('--dataset_dir', type=str, default='../data/dataset')
@@ -45,10 +43,8 @@ def get_args():
     args = parser.parse_args()
     # create folders
     create_folders(args)
-    # set default device cuda
-    set_default_device(args)
     # additional args
     args.n_observation = args.n_item * 2
     args.n_action      = 2 ** args.n_item
-    print(f'{args.n_observation=} {args.n_proto_action=} {args.n_action=}')
+    # print(f'{args.n_observation=} {args.n_proto_action=} {args.n_action=}')
     return args

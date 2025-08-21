@@ -1,13 +1,15 @@
 import simulator
 import torch
 
+from . import util
+
 class BaseSolver:
 
     def __init__(self, args):
         # save args
         self.args = args
-        # create env
-        self.env = simulator.Env(args)
+        # load data
+        self.dataloader_dict = simulator.dataset.create(args)
         # load monitor
         self.monitor = simulator.Monitor(args)
 
@@ -18,57 +20,27 @@ class BaseSolver:
         # extract args
         self.load()
         monitor, args = self.monitor, self.args
-        monitor.create_progress_bar(args.n_test_episode)
-        # test each property
-        for _ in range(args.n_test_episode):
-            info = self.test_episode()
-            monitor.step(info)
-            monitor.export_csv()
+        info = self.test_epoch()
+        monitor.step(info)
+        monitor.export_csv()
 
-    def test_episode(self):
-        # extract args
+    def test_epoch(self):
         args = self.args
-        env  = self.env
-        # reset environment
-        observation, done = env.reset()
-        info = {'episode': env.episode, 'value': 0}
-        self.init_hook(observation)
+        loader = self.dataloader_dict['test']
+        info = {'step': 0, 'objective': 0.0, 'constraint': 0.0}
         # step loop
-        while not done:
-            with torch.no_grad():
-                action = self.select_action(observation)
-            next_observation, reward, done, step_info = env.step(action)
-            self.step_hook(next_observation)
-            info['value'] += reward
-            observation = next_observation
+        for batch in loader:
+            # select action
+            action = self.select_action(batch)
+            # evaluation
+            objective = util.get_objective(batch['value'], action)
+            constraint = util.check_contraint(batch['weight'], args.capacity, action)
+            info['step']       += len(objective)
+            info['objective']  += objective.sum().item()
+            info['constraint'] += constraint.sum().item()
+        info['objective']  /= info['step']
+        info['constraint'] /= info['step']
         return info
-
-    def train(self):
-        # extract args
-        self.load()
-        monitor, args = self.monitor, self.args
-        monitor.create_progress_bar(args.n_train_episode * args.n_train_epoch)
-        # test each property
-        for episode in range(args.n_train_episode * args.n_train_epoch):
-            try:
-                info = self.train_episode()
-                monitor.step(info)
-                monitor.export_csv()
-                if episode % args.n_save == 0 and episode > 0:
-                    self.save()
-            except KeyboardInterrupt:
-                pass
-        self.save()
-
-
-    def init_hook(self, observation):
-        pass
-
-    def step_hook(self, next_observation):
-        pass
 
     def load(self):
         pass
-
-    def save(self):
-        raise NotImplementedError

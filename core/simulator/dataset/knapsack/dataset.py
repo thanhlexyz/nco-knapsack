@@ -32,7 +32,7 @@ class Dataset(Dataset):
             print(f'    - saved {path=}')
 
     def __len__(self):
-        return len(self.c)
+        return len(self.weight)
 
     def __getitem__(self, i):
         item = {'weight': self.weight[i], 'value': self.value[i]}
