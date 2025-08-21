@@ -1,5 +1,6 @@
 from torch.utils.data import Dataset
 import numpy as np
+import torch
 import time
 import os
 
@@ -25,8 +26,8 @@ class Dataset(Dataset):
             print(f'[+] preparing {label}')
             tic = time.time()
             # generate random weight and value
-            self.weight = np.random.rand(n_instance, args.n_item)
-            self.value  = np.random.rand(n_instance, args.n_item)
+            self.weight = np.random.rand(n_instance, args.n_item).astype(dtype=np.float32)
+            self.value  = np.random.rand(n_instance, args.n_item).astype(dtype=np.float32)
             # save data
             np.savez_compressed(path, weight=self.weight, value=self.value)
             print(f'    - saved {path=}')
