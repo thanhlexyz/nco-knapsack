@@ -16,22 +16,20 @@ class Solver(BaseSolver):
         super().__init__(args)
         self.create_model()
 
-    def select_action(self, batch):
-        weight = batch['weight']
-        value  = batch['value']
-        args   = self.args
-        C      = args.capacity
-        action = []
-        n_instance, n_item = weight.shape
-        actor  = self.actor
-        qf     = self.qf1
-        mapper = self.mapper
+    def select_action(self, weight, value):
+        args       = self.args
+        C          = args.capacity
+        action     = []
+        n_instance = weight.shape[0]
+        actor      = self.actor
+        qf         = self.qf1
+        mapper     = self.mapper
         #
-        observation = torch.cat([batch['weight'], batch['value']], dim=1)
+        observation = torch.cat([weight[None, :], value[None, :]], dim=1)
         proto_action, _, _ = actor.get_action(observation)
         action, _ = mapper.get_best_match(proto_action.detach().cpu().numpy(),
                                           observation, qf)
-        return action
+        return action[0]
 
     def create_model(self):
         # extract args
@@ -75,4 +73,4 @@ class Solver(BaseSolver):
             # store replay buffer
             replay_buffer.push(observation[0], discrete_proto_action, reward)
             #
-            if self.global_step > args.n_start_learning:
+            # if self.global_step > args.n_start_learning:

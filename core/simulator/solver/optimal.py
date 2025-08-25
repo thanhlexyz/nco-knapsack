@@ -10,20 +10,13 @@ class Solver(BaseSolver):
         # generate all solution
         self.x = simulator.solver.util.gen_all_binary_vectors(args.n_item)
 
-    def select_action(self, batch):
-        weight = batch['weight']
-        value  = batch['value']
+    def select_action(self, weight, value):
         args   = self.args
         C      = args.capacity
-        action = []
-        n_instance, n_item = weight.shape
-        for i in range(n_instance):
-            w, v = weight[i], value[i]
-            # compute all objective and constraint
-            objective  = (self.x @ v[:, None]).squeeze()
-            constraint = ((self.x @ w[:, None] - C) <= 0).squeeze()
-            reward     = objective * constraint
-            a          = self.x[int(torch.argmax(reward).item())]
-            action.append(a)
-        action = torch.stack(action)
+        n_item = weight.shape[0]
+        # compute all objective and constraint
+        objective  = (self.x @ value[:, None]).squeeze()
+        constraint = ((self.x @ weight[:, None] - C) <= 0).squeeze()
+        reward     = objective * constraint
+        action     = self.x[int(torch.argmax(reward).item())]
         return action

@@ -9,22 +9,15 @@ class Solver(BaseSolver):
     def __init__(self, args):
         super().__init__(args)
 
-    def select_action(self, batch):
-        weight = batch['weight']
-        value  = batch['value']
+    def select_action(self, weight, value):
         args   = self.args
         C      = args.capacity
-        action = []
-        n_instance, n_item = weight.shape
-        for i in range(n_instance):
-            w, v = weight[i], value[i]
-            indices = np.random.permutation(n_item)
-            a = torch.zeros_like(w)
-            for j in range(n_item):
-                a[indices[j]] = 1
-                if torch.sum(w * a) > C:
-                    a[indices[j]] = 0
-                    break
-            action.append(a)
-        action = torch.stack(action)
+        n_item = weight.shape[0]
+        indices = np.random.permutation(n_item)
+        action = torch.zeros_like(weight)
+        for j in range(n_item):
+            action[indices[j]] = 1
+            if torch.sum(weight * action) > C:
+                action[indices[j]] = 0
+                break
         return action

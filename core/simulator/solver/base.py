@@ -14,7 +14,7 @@ class BaseSolver:
         # load monitor
         self.monitor = simulator.Monitor(args)
 
-    def select_action(self, observation):
+    def select_action(self, weight, value):
         raise NotImplementedError
 
     def test(self):
@@ -31,14 +31,15 @@ class BaseSolver:
         info = {'step': 0, 'objective': 0.0, 'constraint': 0.0}
         # step loop
         for batch in tqdm.tqdm(loader):
+            weight, value = batch['weight'][0], batch['value'][0]
             # select action
-            action = self.select_action(batch)
+            action = self.select_action(weight, value)
             # evaluation
-            objective = util.get_objective(batch['value'], action)
-            constraint = util.check_contraint(batch['weight'], args.capacity, action)
-            info['step']       += len(objective)
-            info['objective']  += objective.sum().item()
-            info['constraint'] += constraint.sum().item()
+            objective = util.get_objective(value, action)
+            constraint = util.check_contraint(weight, args.capacity, action)
+            info['step']       += 1
+            info['objective']  += objective.item()
+            info['constraint'] += constraint.item()
         info['objective']  /= info['step']
         info['constraint'] /= info['step']
         return info
