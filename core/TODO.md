@@ -1,3 +1,3 @@
 - [x] adding optimal, random, greedy solver
-- [ ] adding SAC test phase
+- [x] adding SAC test phase
 - [ ] adding SAC train phase
