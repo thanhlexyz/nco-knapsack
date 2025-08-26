@@ -17,11 +17,11 @@ def get_args():
     parser.add_argument('--n_test_episode', type=int, default=1000)
     parser.add_argument('--dataset', type=str, default='knapsack')
     parser.add_argument('--n_item', type=int, default=10)
-    parser.add_argument('--capacity', type=float, default=0.25) # fraction
+    parser.add_argument('--capacity', type=float, default=1.0) # fraction
     # large discrete action space solver
     parser.add_argument('--mapper', type=str, default='knn')
-    parser.add_argument('--knn_k', type=int, default=100)
-    parser.add_argument('--n_proto_action', type=int, default=8)
+    parser.add_argument('--knn_k', type=int, default=10)
+    parser.add_argument('--n_proto_action', type=int, default=3)
     # solver
     parser.add_argument('--solver', type=str, default='greedy')
     # sac parameter
@@ -48,6 +48,9 @@ def get_args():
     parser.add_argument('--csv_dir', type=str, default='../data/csv')
     # logging
     parser.add_argument('--n_monitor', type=int, default=100)
+    # plotting
+    parser.add_argument('--metric', type=str, default='value')
+    parser.add_argument('--n_smooth', type=int, default=1)
     # device
     if torch.cuda.is_available():
         parser.add_argument('--device', type=str, default='cuda:0')

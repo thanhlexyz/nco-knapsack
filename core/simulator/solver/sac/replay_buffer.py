@@ -4,7 +4,7 @@ import random
 import torch
 
 Transition = namedtuple('Transition',
-                        ('observation', 'reward'))
+                        ('observation', 'reward', 'constraint'))
 
 class ReplayBuffer(object):
 
@@ -31,3 +31,4 @@ class TrainingData:
         batch                 = Transition(*zip(*transitions))
         self.observation      = torch.from_numpy(np.stack(batch.observation)).to(device=args.device, dtype=torch.float32)
         self.reward           = torch.tensor(batch.reward, device=args.device, dtype=torch.float32)
+        self.constraint       = torch.tensor(batch.constraint, device=args.device, dtype=torch.float32)

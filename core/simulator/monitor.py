@@ -22,7 +22,7 @@ class Monitor:
     def __update_description(self, **kwargs):
         _kwargs = {}
         for key in kwargs:
-            for term in ['loss', 'cost', 'value', 'reward', 'constraint']:
+            for term in ['loss', 'cost', 'objective', 'reward', 'constraint']:
                 if term in key:
                     _kwargs[key] = f'{kwargs[key]:0.8f}'
         if self.bar:
@@ -31,6 +31,7 @@ class Monitor:
     def __display(self):
         if self.bar:
             self.bar.display()
+            print()
 
     def step(self, info):
         # extract stats from all stations

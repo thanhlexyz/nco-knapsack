@@ -1,4 +1,6 @@
 - [x] adding optimal, random, greedy solver
 - [x] adding SAC test phase
 - [x] adding SAC train phase
-- [ ] sort action space by number of items
+- [x] sort action space by number of items
+- [x] randomized proto action does not span all action space, try better weight initialization (indeed improve)
+- [ ] train with lagrangian to model constraint

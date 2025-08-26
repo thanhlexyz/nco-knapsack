@@ -17,9 +17,9 @@ class Mapper:
         # generate all solution
         self.binary_action = simulator.solver.util.gen_all_binary_vectors(args.n_item)
         # sort all solution by number of 1's in binary representation
-        actions                   = np.arange(args.n_action)
-        counts                    = np.array([np.binary_repr(_).count('1') for _ in actions])
-        indices                   = np.argsort(counts)
+        actions            = np.arange(args.n_action)
+        counts             = np.array([np.binary_repr(_).count('1') for _ in actions])
+        indices            = np.argsort(counts)
         self.binary_action = self.binary_action[indices]
 
     def generate_proto_actions(self):
@@ -35,7 +35,7 @@ class Mapper:
         proto_actions               = proto_actions[:args.n_action, :]
         return proto_actions
 
-    def get_best_match(self, proto_action, observation, critic):
+    def get_best_match(self, proto_action, observation, critic, constraint_critic):
         # extract args
         args = self.args
         # obtain k nearest neighbor
@@ -45,8 +45,11 @@ class Mapper:
         # obtain q-values of top k nearest actions
         observations = torch.tile(observation, [args.knn_k, 1])
         q_values     = critic.forward(observations, top_k_proto_actions.to(args.device))
+        logits       = constraint_critic.forward(observations, top_k_proto_actions.to(args.device))
+        mask         = torch.argmax(logits, dim=1)
+        utility = q_values * mask + (1 - mask) * (-np.inf)
         # pick neighbor with highest q-value
-        idx = int(torch.argmax(q_values).item())
+        idx = int(torch.argmax(utility).item())
         best_action = int(top_k_indices[0][idx])
         best_proto_action = torch.tensor(self.proto_actions[best_action])
         best_action = self.binary_action[best_action]
