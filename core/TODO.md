@@ -1,3 +1,4 @@
 - [x] adding optimal, random, greedy solver
 - [x] adding SAC test phase
-- [ ] adding SAC train phase
+- [x] adding SAC train phase
+- [ ] sort action space by number of items
