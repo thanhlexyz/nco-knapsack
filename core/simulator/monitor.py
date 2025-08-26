@@ -22,7 +22,7 @@ class Monitor:
     def __update_description(self, **kwargs):
         _kwargs = {}
         for key in kwargs:
-            for term in ['loss', 'cost', 'value']:
+            for term in ['loss', 'cost', 'value', 'reward', 'constraint']:
                 if term in key:
                     _kwargs[key] = f'{kwargs[key]:0.4f}'
         if self.bar:

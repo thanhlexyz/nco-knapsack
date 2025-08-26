@@ -23,3 +23,11 @@ class ReplayBuffer(object):
 
     def __len__(self):
         return len(self.memory)
+
+class TrainingData:
+
+    def __init__(self, transitions, args):
+        batch                 = Transition(*zip(*transitions))
+        self.observation      = torch.from_numpy(np.stack(batch.observation)).to(device=args.device, dtype=torch.float32)
+        self.proto_action     = torch.from_numpy(np.stack(batch.action)).to(device=args.device, dtype=torch.long)
+        self.reward           = torch.tensor(batch.reward, device=args.device, dtype=torch.float32)

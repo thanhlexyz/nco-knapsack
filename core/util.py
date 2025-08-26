@@ -48,6 +48,8 @@ def get_args():
     parser.add_argument('--dataset_dir', type=str, default='../data/dataset')
     parser.add_argument('--figure_dir', type=str, default='../figure')
     parser.add_argument('--csv_dir', type=str, default='../data/csv')
+    # logging
+    parser.add_argument('--n_monitor', type=int, default=100)
     # device
     if torch.cuda.is_available():
         parser.add_argument('--device', type=str, default='cuda:0')
