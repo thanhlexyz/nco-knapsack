@@ -6,4 +6,4 @@ test:
 	python3 main.py --solver=optimal
 
 train:
-	python3 main.py --solver=sac --mode=train
+	python3 main.py --solver=sac --mode=train --autotune_entropy

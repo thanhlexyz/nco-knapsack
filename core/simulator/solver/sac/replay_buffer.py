@@ -4,7 +4,7 @@ import random
 import torch
 
 Transition = namedtuple('Transition',
-                        ('observation', 'proto_action', 'reward'))
+                        ('observation', 'reward'))
 
 class ReplayBuffer(object):
 
@@ -30,5 +30,4 @@ class TrainingData:
     def __init__(self, transitions, args):
         batch                 = Transition(*zip(*transitions))
         self.observation      = torch.from_numpy(np.stack(batch.observation)).to(device=args.device, dtype=torch.float32)
-        self.proto_action     = torch.from_numpy(np.stack(batch.proto_action)).to(device=args.device, dtype=torch.long)
         self.reward           = torch.tensor(batch.reward, device=args.device, dtype=torch.float32)

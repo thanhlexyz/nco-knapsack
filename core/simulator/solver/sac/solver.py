@@ -17,6 +17,30 @@ class Solver(BaseSolver):
         super().__init__(args)
         self.create_model()
 
+    def create_model(self):
+        # extract args
+        args = self.args
+        # initialize actor/critic
+        self.actor = Actor(args).to(args.device)
+        self.qf = SoftQNetwork(args).to(args.device)
+        # initialize optimizer
+        self.qf_optimizer = optim.Adam(list(self.qf.parameters()), lr=args.qf_lr)
+        self.actor_optimizer = optim.Adam(list(self.actor.parameters()), lr=args.actor_lr)
+        # initialize automatic entropy tuning
+        if args.autotune_entropy:
+            self.target_entropy  = -torch.prod(torch.Tensor(args.n_proto_action).to(args.device)).item()
+            self.log_alpha       = torch.zeros(1, requires_grad=True, device=args.device)
+            self.alpha           = self.log_alpha.exp().item()
+            self.alpha_optimizer = optim.Adam([self.log_alpha], lr=args.qf_lr)
+        else:
+            alpha = args.alpha
+        # initialize mapper
+        self.mapper = Mapper(args)
+        # initialize replay buffer
+        self.replay_buffer = ReplayBuffer(args.n_buffer)
+        # initialize global step
+        self.global_step = 0
+
     def select_action(self, weight, value):
         args       = self.args
         C          = args.capacity
@@ -26,34 +50,11 @@ class Solver(BaseSolver):
         qf         = self.qf1
         mapper     = self.mapper
         #
-        observation = torch.cat([weight[None, :], value[None, :]], dim=1)
+        observation = torch.cat([weight[None, :], value[None, :]], dim=1).to(args.device)
         proto_action, _, _ = actor.get_action(observation)
         action, _ = mapper.get_best_match(proto_action.detach().cpu().numpy(),
                                           observation, qf)
         return action[0]
-
-    def create_model(self):
-        # extract args
-        args = self.args
-        # initialize actor/critic
-        self.actor = Actor(args)
-        self.qf = SoftQNetwork(args)
-        # self.qf1        = SoftQNetwork(args)
-        # self.qf2        = SoftQNetwork(args)
-        # self.qf1_target = SoftQNetwork(args)
-        # self.qf2_target = SoftQNetwork(args)
-        # self.qf1_target.load_state_dict(self.qf1.state_dict())
-        # self.qf2_target.load_state_dict(self.qf2.state_dict())
-        # initialize optimizer
-        # self.critic_optimizer = optim.Adam(list(self.qf1.parameters()) + list(self.qf2.parameters()), lr=args.qf_lr)
-        self.qf_optimizer = optim.Adam(list(self.qf.parameters()), lr=args.qf_lr)
-        self.actor_optimizer = optim.Adam(list(self.actor.parameters()), lr=args.actor_lr)
-        # initialize mapper
-        self.mapper = Mapper(args)
-        # initialize replay buffer
-        self.replay_buffer = ReplayBuffer(args.n_buffer)
-        # initialize global step
-        self.global_step = 0
 
     def train_epoch(self):
         # extract args
@@ -63,14 +64,14 @@ class Solver(BaseSolver):
         actor         = self.actor
         args          = self.args
         qf            = self.qf
-        info          = {'step': 0, 'objective': 0.0, 'constraint': 0.0, 'reward': 0.0, 'actor_loss': 0.0, 'qf_loss': 0.0}
+        info          = {'step': 0, 'objective': 0.0, 'constraint': 0.0, 'reward': 0.0, 'actor_loss': 0.0, 'qf_loss': 0.0, 'alpha_loss': 0.0}
         n_train_step  = 0
         #
         for episode in range(args.n_train_episode):
             # generate random instance
             weight      = torch.from_numpy(np.random.rand(1, args.n_item).astype(dtype=np.float32))
             value       = torch.from_numpy(np.random.rand(1, args.n_item).astype(dtype=np.float32))
-            observation = torch.cat([weight, value], dim=1)
+            observation = torch.cat([weight, value], dim=1).to(args.device)
             # select action
             proto_action, _, _ = actor.get_action(observation)
             action, discrete_proto_action = mapper.get_best_match(proto_action.detach().cpu().numpy(), observation, qf)
@@ -79,32 +80,36 @@ class Solver(BaseSolver):
             constraint = simulator.solver.util.check_contraint(weight, args.capacity, action)
             reward = objective * constraint
             # store replay buffer
-            replay_buffer.push(observation[0].cpu().numpy(), discrete_proto_action.detach().cpu().numpy(), reward.item())
+            replay_buffer.push(observation[0].cpu().numpy(), reward.item())
             # learning
             if self.global_step > args.n_start_learning:
-                actor_loss, qf_loss, alpha_loss = self.optimize()
-                n_train_step += 1
-
+                if self.global_step % args.n_optimize == 0:
+                    actor_loss, qf_loss, alpha_loss = self.optimize()
+                    info['actor_loss'] += actor_loss
+                    info['qf_loss'] += qf_loss
+                    info['alpha_loss'] += alpha_loss
+                    n_train_step += 1
             # logging
-            info['step']       += 1
+            info['step']        = self.global_step
             info['objective']  += objective.item()
             info['constraint'] += constraint.item()
             info['reward']     += reward.item()
             if self.global_step % args.n_monitor == 0:
-                info['objective']  /= info['step']
-                info['constraint'] /= info['step']
-                info['reward']     /= info['step']
+                info['objective']  /= args.n_monitor
+                info['constraint'] /= args.n_monitor
+                info['reward']     /= args.n_monitor
                 if n_train_step >= 1:
                     info['actor_loss'] /= n_train_step
                     info['qf_loss']    /= n_train_step
+                    info['alpha_loss'] /= n_train_step
                 monitor.step(info)
                 monitor.export_csv()
-                info = {'step': 0, 'objective': 0.0, 'constraint': 0.0, 'reward': 0.0, 'actor_loss': 0.0, 'qf_loss': 0.0}
+                info = {'step': self.global_step, 'objective': 0.0, 'constraint': 0.0, 'reward': 0.0, 'actor_loss': 0.0, 'qf_loss': 0.0, 'alpha_loss': 0.0}
                 n_train_step  = 0
             self.global_step += 1
 
     def optimize(self):
-        args          = self.args
+        args = self.args
         replay_buffer = self.replay_buffer
         self.actor.train()
         self.qf.train()
@@ -112,15 +117,21 @@ class Solver(BaseSolver):
         transitions = replay_buffer.sample(args.batch_size)
         data = TrainingData(transitions, args)
         qf_loss = self.optimize_qf(data)
-        actor_loss, alpha_loss = self.optimize_actor(data)
+        actor_loss = self.optimize_actor(data)
+        alpha_loss = self.optimize_alpha(data)
         if self.global_step % args.n_target_update == 0:
             self.update_target()
         return actor_loss, qf_loss, alpha_loss
 
     def optimize_qf(self, data):
-        qf, qf_optimizer = self.qf, self.qf_optimizer
-        qv_target = data.reward.squeeze()
-        qv = qf(data.observation, data.proto_action).squeeze()
+        args = self.args
+        qf, qf_optimizer, actor, alpha = self.qf, self.qf_optimizer, self.actor, self.alpha
+        observation = data.observation.to(args.device)
+        reward = data.reward.squeeze().to(args.device)
+        with torch.no_grad():
+            proto_action, log_prob, _ = actor.get_action(observation)
+        qv_target = reward - alpha * log_prob.squeeze()
+        qv = qf(observation, proto_action).squeeze()
         qf_loss = F.mse_loss(qv, qv_target)
         qf_optimizer.zero_grad()
         qf_loss.backward()
@@ -128,15 +139,34 @@ class Solver(BaseSolver):
         return qf_loss.item()
 
     def optimize_actor(self, data):
-        return 0, 0
+        # extract args
+        qf, actor, actor_optimizer, alpha, args = self.qf, self.actor, self.actor_optimizer, self.alpha, self.args
+        observation = data.observation.to(args.device)
+        # optimize actor
+        proto_action, log_prob, _ = actor.get_action(observation)
+        qv = qf(observation, proto_action)
+        actor_loss = (alpha * log_prob -qv).mean()
+        actor_optimizer.zero_grad()
+        actor_loss.backward()
+        actor_optimizer.step()
+        return actor_loss.item()
+
+    def optimize_alpha(self, data):
+        alpha_loss = 0.0
+        args = self.args
+        # optimize alpha
+        if args.autotune_entropy:
+            log_alpha, alpha_optimizer, target_entropy, actor = self.log_alpha, self.alpha_optimizer, self.target_entropy, self.actor
+            observation = data.observation.to(args.device)
+            with torch.no_grad():
+                _, log_prob, _ = actor.get_action(observation)
+            alpha_loss = (-log_alpha.exp() * (log_prob + target_entropy)).mean()
+            alpha_optimizer.zero_grad()
+            alpha_loss.backward()
+            alpha_optimizer.step()
+            self.alpha = log_alpha.exp().item()
+            alpha_loss = alpha_loss.item()
+        return alpha_loss
 
     def update_target(self):
         pass
-#         # extract args
-#         qf1, qf2, qf1_target, qf2_target = self.qf1, self.qf2, self.qf1_target, self.qf2_target
-#         args = self.args
-#         # update
-#         for param, target_param in zip(qf1.parameters(), qf1_target.parameters()):
-#             target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
-#         for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
-#             target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)

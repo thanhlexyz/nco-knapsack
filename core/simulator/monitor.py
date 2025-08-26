@@ -17,14 +17,14 @@ class Monitor:
 
     def __update_time(self):
         if self.bar:
-            self.bar.update(1)
+            self.bar.update(self.args.n_monitor)
 
     def __update_description(self, **kwargs):
         _kwargs = {}
         for key in kwargs:
             for term in ['loss', 'cost', 'value', 'reward', 'constraint']:
                 if term in key:
-                    _kwargs[key] = f'{kwargs[key]:0.4f}'
+                    _kwargs[key] = f'{kwargs[key]:0.8f}'
         if self.bar:
             self.bar.set_postfix(**_kwargs)
 
@@ -40,7 +40,7 @@ class Monitor:
         self.__display()
         # log to csv
         self.__update_csv(info)
-        self.global_step += 1
+        self.global_step += self.args.n_monitor
 
     ####################################################################################
     # MODIFY HERE

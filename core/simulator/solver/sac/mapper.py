@@ -44,7 +44,7 @@ class Mapper:
         top_k_proto_actions = torch.tensor(top_k_proto_actions)
         # obtain q-values of top k nearest actions
         observations = torch.tile(observation, [args.knn_k, 1])
-        q_values     = critic.forward(observations, top_k_proto_actions)
+        q_values     = critic.forward(observations, top_k_proto_actions.to(args.device))
         # pick neighbor with highest q-value
         idx = int(torch.argmax(q_values).item())
         best_action = int(top_k_indices[0][idx])
