@@ -1,10 +1,11 @@
+import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 import simulator
 import torch
 
+from .replay_buffer import ReplayBuffer, TrainingData
 from .soft_q_network import SoftQNetwork
-from .replay_buffer import ReplayBuffer
 from .mapper import Mapper
 from .actor import Actor
 
@@ -57,10 +58,11 @@ class Solver(BaseSolver):
     def train_epoch(self):
         # extract args
         replay_buffer = self.replay_buffer
+        monitor       = self.monitor
         mapper        = self.mapper
         actor         = self.actor
         args          = self.args
-        qf            = self.qf1
+        qf            = self.qf
         info          = {'step': 0, 'objective': 0.0, 'constraint': 0.0, 'reward': 0.0, 'actor_loss': 0.0, 'qf_loss': 0.0}
         n_train_step  = 0
         #
@@ -80,7 +82,7 @@ class Solver(BaseSolver):
             replay_buffer.push(observation[0].cpu().numpy(), discrete_proto_action.detach().cpu().numpy(), reward.item())
             # learning
             if self.global_step > args.n_start_learning:
-                actor_loss, qf_loss = self.optimize()
+                actor_loss, qf_loss, alpha_loss = self.optimize()
                 n_train_step += 1
 
             # logging
@@ -88,7 +90,7 @@ class Solver(BaseSolver):
             info['objective']  += objective.item()
             info['constraint'] += constraint.item()
             info['reward']     += reward.item()
-            if global_step % args.n_monitor == 0:
+            if self.global_step % args.n_monitor == 0:
                 info['objective']  /= info['step']
                 info['constraint'] /= info['step']
                 info['reward']     /= info['step']
@@ -96,16 +98,16 @@ class Solver(BaseSolver):
                     info['actor_loss'] /= n_train_step
                     info['qf_loss']    /= n_train_step
                 monitor.step(info)
-                monitor.export()
+                monitor.export_csv()
                 info = {'step': 0, 'objective': 0.0, 'constraint': 0.0, 'reward': 0.0, 'actor_loss': 0.0, 'qf_loss': 0.0}
                 n_train_step  = 0
+            self.global_step += 1
 
     def optimize(self):
         args          = self.args
         replay_buffer = self.replay_buffer
         self.actor.train()
-        self.qf1.train()
-        self.qf2.train()
+        self.qf.train()
         # extract batch from buffer
         transitions = replay_buffer.sample(args.batch_size)
         data = TrainingData(transitions, args)
@@ -117,8 +119,8 @@ class Solver(BaseSolver):
 
     def optimize_qf(self, data):
         qf, qf_optimizer = self.qf, self.qf_optimizer
-        qv_target = data.reward
-        qv = qf(data.observation, data.proto_action)
+        qv_target = data.reward.squeeze()
+        qv = qf(data.observation, data.proto_action).squeeze()
         qf_loss = F.mse_loss(qv, qv_target)
         qf_optimizer.zero_grad()
         qf_loss.backward()

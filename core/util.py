@@ -13,7 +13,6 @@ def get_args():
     parser.add_argument('--scenario', type=str, default='main')
     parser.add_argument('--mode', type=str, default='test')
     # prepare
-    parser.add_argument('--n_train_epoch', type=int, default=1)
     parser.add_argument('--n_train_episode', type=int, default=1000000)
     parser.add_argument('--n_test_episode', type=int, default=1000)
     parser.add_argument('--dataset', type=str, default='knapsack')

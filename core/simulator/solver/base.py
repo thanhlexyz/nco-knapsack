@@ -48,6 +48,7 @@ class BaseSolver:
         # extract args
         self.load()
         monitor, args = self.monitor, self.args
+        monitor.create_progress_bar(args.n_train_episode)
         info = self.train_epoch()
         monitor.step(info)
         monitor.export_csv()
